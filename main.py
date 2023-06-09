@@ -10,9 +10,30 @@ from multiprocessing import Pool,Manager
 from functools import partial
 import time
 import timeit
-##problem constants for our problem
+
 beta=5
-alpha=1
+alpha=5
+gamma=1000
+vector_beta=[1,2,3,5,10]
+vector_alpha=[4,5,10,100]
+vector_gamma=[0,0.1,500,1000]
+Lambda=1000
+n=2000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##problem constants for our problem
 T=7
 theta1=80*np.pi
 theta=2
@@ -28,8 +49,8 @@ kappa=1/(F+(1/(2*alpha)))
 Q0=400
 D0=300
 
-Lambda=1000
-n=200
+
+
 m=30
 dimX=1
 dimY=2
@@ -38,7 +59,7 @@ dim_BM=2
 R=100 #basis functions
 maxP=10000
 P0=-100
-gamma=5000
+
 u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
 
 Price=np.zeros((Lambda,n))
@@ -69,18 +90,18 @@ def conventional(P):
 
 #Auxiliary functions 
 
-def F1(t,T):
+def F1(t,T,alpha,beta,gamma,u):
     num=np.exp(np.sqrt(beta/alpha)*t)*np.sqrt(beta/alpha)
     denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
     return num/denom
     
-def F2(t,T):
+def F2(t,T,alpha,beta,gamma,u):
     num=u*np.exp(-np.sqrt(beta/alpha)*(2*T-t))*np.sqrt(beta/alpha)
     denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
     return num/denom
 
 
-def fp(t,T):
+def fp(t,T,alpha,beta,gamma,u):
     num=1-u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
     denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
     return(num/denom)
@@ -90,6 +111,11 @@ def fp(t,T):
 ###function b
 def b(i,forward):
     # my problem
+    alpha=forward.alpha
+    beta=forward.beta
+    gamma=forward.gamma
+    u=forward.u_g
+    kappa=1/(F+(1/(2*alpha)))
     image=np.zeros((Lambda))
     valueX_at_t=forward.valueX[:,:,i]
     t=i*T/(forward.n-1)
@@ -99,27 +125,12 @@ def b(i,forward):
     Y2=valueY_l_at_t[:,1]
     Qt=valueX_l_at_t[:,0]
     Dt=forward.D[:,i]
-    Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
+    Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T,alpha,beta,gamma,u)*(Qt-Q0)+F1(t,T,alpha,beta,gamma,u)*Y1-F2(t,T,alpha,beta,gamma,u)*Y2)
     image=-(Dt-conventional(Pt))
     #exemple from articl
     #image=np.zeros((D,1))
     return image
 
-def bprime(i,forward,K):
-    # my problem
-    # my problem
-    image=np.zeros((Lambda))
-    valueX_at_t=forward.valueX[:,:,i]
-    t=(i+1)*T/(forward.n-1)
-    valueX_l_at_t=forward.valueX[:,:,i]
-    valueY_l_at_t=forward.u[:,:,i+1]
-    Y1=valueY_l_at_t[:,0]
-    Y2=valueY_l_at_t[:,1]
-    Qt=valueX_l_at_t[:,0]
-    Dt=forward.D[:,i+1]
-    Pt=min(kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt+K-Q0)+F1(t,T)*Y1-F2(t,T)*Y2),maxP)
-    #exemple from articl
-    return image
 
 ##function sigma
 def sigma(i,forward):
@@ -134,6 +145,11 @@ def sigma(i,forward):
 
 
 def f(i,forward,backward):
+    alpha=forward.alpha
+    beta=forward.beta
+    gamma=forward.gamma
+    u=forward.u_g
+    kappa=1/(F+(1/(2*alpha)))
     valueX_at_t=forward.valueX[:,:,i]
     t=i*T/(forward.n-1)
     valueX_l_at_t=forward.valueX[:,:,i]
@@ -142,7 +158,7 @@ def f(i,forward,backward):
     Y2=valueY_l_at_t[:,1]
     Qt=valueX_l_at_t[:,0]
     Dt=forward.D[:,i]
-    Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
+    Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T,alpha,beta,gamma,u)*(Qt-Q0)+F1(t,T,alpha,beta,gamma,u)*Y1-F2(t,T,alpha,beta,gamma,u)*Y2)
     #test for a non linear price:
     #Pt=pricefunction(Dt-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
     image=np.zeros((Lambda,dimY))
@@ -179,14 +195,14 @@ def Demand():
     return cos + sigma_vol*np.transpose(W[:,:,0])
     
     
-def main():
+def main(alpha,beta,gamma):
     x0=np.array([Q0])
     #x0=np.array([x_0 for i in range(D)])
     #exemple from article
     W=brownian(n,T, Lambda,dim_BM)
     D=Demand()
-    backward_variables=backward(n,m,Lambda,dimX,dimY,dimZ,x0,T)
-    forward_variables=forward(n,m,Lambda,dimX,dimY,dimZ,x0,T,D)
+    backward_variables=backward(n,m,Lambda,dimX,dimY,dimZ,x0,T,alpha,beta,gamma)
+    forward_variables=forward(n,m,Lambda,dimX,dimY,dimZ,x0,T,D,alpha,beta,gamma)
     previousY=np.zeros(dimY)
     previousX=np.zeros(dimX)
     previousX[0]=-100
@@ -198,10 +214,10 @@ def main():
             previousY[i]=backward_variables.valueY[0,i,0]
         for i in range(dimX):
             previousX[i]=forward_variables.valueX[0,i,n-1]
-        forward_variables.update(W,b,sigma,bprime)
+        forward_variables.update(W,b,sigma)
         backward_variables.update(W,f,forward_variables,R)
-        print("finalX=" +str(forward_variables.valueX[0,i,n-1]))
-        print("initialYdiff= " + str([previousY[i]-backward_variables.valueY[0,i,0] for i in range(dimY)]))
+        #print("finalX=" +str(forward_variables.valueX[0,i,n-1]))
+        #print("initialYdiff= " + str([previousY[i]-backward_variables.valueY[0,i,0] for i in range(dimY)]))
         print("ITERATION : " + str(mmax))
         print("diff max="+str(max(max([abs(previousY[i]-backward_variables.valueY[0,i,0]) for i in range(dimY)]),max([abs(previousX[i]-forward_variables.valueX[0,i,n-1]) for i in range(dimX)]))))
     print("iteration max="+str(mmax))
@@ -210,16 +226,17 @@ def main():
     #plt.plot(time1,forward_variables.valueX[0,0],'b-', label="simu")   
     return (backward_variables.valueY,forward_variables.valueX,W,backward_variables.valueZ,mmax,D)
 
-t1=time.time()
-time1=np.linspace(0,T,n)#[i*T/n for i in range(n)]
+
+time1=np.linspace(0,T,n)
 dt=T/(n-1)
 
 
 #######utilisation des résultats
 
 
-def computePt(X,Y,D,l):
+def computePt(X,Y,D,l,alpha,beta,gamma):
     Pt=np.zeros(n)
+    u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
     for i in range(n):
         t=i*T/(n-1)
         valueX_l_at_t=X[l,:,i]
@@ -228,158 +245,165 @@ def computePt(X,Y,D,l):
         Y2=valueY_l_at_t[1]
         Qt=valueX_l_at_t[0]
         Dt=D[l,i]
-        Pt[i]=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
+        Pt[i]=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T,alpha,beta,gamma,u)*(Qt-Q0)+F1(t,T,alpha,beta,gamma,u)*Y1-F2(t,T,alpha,beta,gamma,u)*Y2)
+
         #test for a non linear conventional function:
         #Pt[i]=pricefunction(Dt-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
     return(Pt)
 
  #première exploitation : tracé de chaque variable dans un scénario donné décidé par les paramètres tout en haut
 
-"""
-result=main()
-Y=result[0]
-X=result[1]
-W=result[2]
-Z=result[3]
-mmax=result[4]
-D=result[5]
-Pt=computePt(X,Y,D,0)
-conventional_energy=[conventional(Pt[i]) for i in range(n)]
-valueX_l_at_t=X[0,:,:]
-valueY_l_at_t=Y[0,:,:]
-        
-Y1=valueY_l_at_t[0]
-        
-Y2=valueY_l_at_t[1]
-        
-        
-#Dt=valueX_l_at_t[1]
-
-##tracé
-fig, axs = plt.subplots(1,3)
-#fig.suptitle('Plot with parameters beta='+str(beta)+',alpha='+str(alpha) + ', Q_0='+str(Q0)+', D0=' + str(D0)+ ',vol_storage=' + str(rho)+',vol_demand=' + str(sigma_vol)+"n="+str(n))
-axs[0].plot(time1,X[0,0],'b-', label="alpha=" + str(alpha))
-axs[0].set_title('Storage level')
-axs[1].plot(time1,Pt,'b-', label="alpha=" + str(alpha))
-axs[1].set_title('Price')
-axs[2].plot(time1,D[0],'b-', label="alpha=" + str(alpha))
-axs[2].set_title('Demand')
-# axs[3].plot(time1,Y[0,0],'b-', label="simu")
-# axs[3].set_title('Y1')
-# axs[4].plot(time1,Y[0,1],'b-', label="simu")
-# axs[4].set_title('Y2')
-axs[0].grid()   
-axs[1].grid()
-axs[2].grid()
-# axs[3].grid()   
-# axs[4].grid()
-
-i=n-1
-t=i*T/(n-1)
-valueX_l_at_t=X[0,:,i]
-valueY_l_at_t=Y[0,:,i]
-Y1=valueY_l_at_t[0]
-Y2=valueY_l_at_t[1]
-Qt=valueX_l_at_t[0]
-Dt=D[0,i]
-print(kappa*(-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)))
-"""
-#seconde exploitation de l'algo, tracé de l'évolution du prix selon les valeurs de beta
-"""
-
-
-fig, axs = plt.subplots(1,3)
-alpha=4
-kappa=1/(F+(1/(2*alpha)))
-fig.suptitle('Plot with parameters alpha='+str(alpha) + ', Q_0='+str(Q0)+', D0=' + str(D0)+',F(Pt)='+str(F0)+'+' + str(F)+'Pt')
-for beta in [1,2,3,5,10]:
-    np.random.seed(10)
-    u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-    result=main()
+def simulation(alpha=alpha,beta=beta,gamma=gamma,n=n):
+    t1=time.time()      
+    time1=np.linspace(0,T,n)
+    result=main(alpha,beta,gamma)
     Y=result[0]
     X=result[1]
     W=result[2]
     Z=result[3]
-    Pt=computePt(X,Y,0)
-    axs[0].plot(time1,X[0,0],'-', label="beta=" + str(beta))
+    mmax=result[4]
+    D=result[5]
+    Pt=computePt(X,Y,D,0,alpha,beta,gamma)
+    conventional_energy=[conventional(Pt[i]) for i in range(n)]
+    valueX_l_at_t=X[0,:,:]
+    valueY_l_at_t=Y[0,:,:]
+            
+    Y1=valueY_l_at_t[0]
+            
+    Y2=valueY_l_at_t[1]
+            
+            
+    #Dt=valueX_l_at_t[1]
+    
+    ##tracé
+    fig, axs = plt.subplots(1,3)
+    fig.suptitle('Plot with alpha='+str(alpha)+', beta='+str(beta)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    axs[0].plot(time1,X[0,0],'b-', label="alpha=" + str(alpha))
     axs[0].set_title('Storage level')
-    axs[0].legend()
-    axs[1].plot(time1,Pt,'-', label="beta=" + str(beta))
-    axs[1].set_title('Electricity price')
-    axs[1].legend()
-    axs[2].plot(time1,X[0,1],'-', label="beta=" + str(beta))
+    axs[1].plot(time1,Pt,'b-', label="alpha=" + str(alpha))
+    axs[1].set_title('Price')
+    axs[2].plot(time1,D[0],'b-', label="alpha=" + str(alpha))
     axs[2].set_title('Demand')
-    axs[2].legend()
+    # axs[3].plot(time1,Y[0,0],'b-', label="simu")
+    # axs[3].set_title('Y1')
+    # axs[4].plot(time1,Y[0,1],'b-', label="simu")
+    # axs[4].set_title('Y2')
+    axs[0].grid()   
+    axs[1].grid()
+    axs[2].grid()
+    # axs[3].grid()   
+    # axs[4].grid()  
+    t2=time.time()
+    print("execution time="+str(t2-t1))
+
+
+
+#seconde exploitation de l'algo, tracé de l'évolution du prix selon les valeurs de beta
+
+def simulation_beta(alpha=alpha,vector=vector_beta,gamma=gamma,n=n):
+    t1=time.time()
+    time1=np.linspace(0,T,n)
+    fig, axs = plt.subplots(1,3)
+    alpha=5
+    kappa=1/(F+(1/(2*alpha)))
+    fig.suptitle('Plot with parameters beta changing, alpha='+str(alpha)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    for beta in vector_beta:
+        np.random.seed(10)
+        u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
+        result=main(alpha,beta,gamma)
+        Y=result[0]
+        X=result[1]
+        W=result[2]
+        Z=result[3]
+        D=result[5]
+        Pt=computePt(X,Y,D,0,alpha,beta,gamma)
+        axs[0].plot(time1,X[0,0],'-', label="beta=" + str(beta))
+        axs[0].set_title('Storage level')
+        axs[0].legend()
+        axs[1].plot(time1,Pt,'-', label="beta=" + str(beta))
+        axs[1].set_title('Electricity price')
+        axs[1].legend()
+        axs[2].plot(time1,D[0],'-', label="beta=" + str(beta))
+        axs[2].set_title('Demand')
+        axs[2].legend()
+    t2=time.time()
+    print("execution time="+str(t2-t1))    
+    
     
  
-  """  
+    
 
 #tracé de l'évolution selon les valeurs de alpha
-"""
-beta=5
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta='+str(beta) + ', Q_0='+str(Q0)+', D0=' + str(D0)+', F(Pt)='+str(F0)+'+' + str(F)+'Pt')
-for alpha in [3.5,20,50 ]:
-    u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-    np.random.seed(4)
-    kappa=1/(F+(1/(2*alpha)))
-    result=main()
-    Y=result[0]
-    X=result[1]
-    W=result[2]
-    Z=result[3]
-    D=result[5]
-    # qt=np.zeros(n)
-    # for j in range(n-1):
-    #     qt[j]=(X[0,0,j+1]-X[0,0,j])/(T/(n-1))
-    Pt=computePt(X,Y,D,0)
-    axs[0].plot(time1,X[0,0],'-', label="alpha=" + str(alpha))
-    axs[0].set_title('Storage level')
-    axs[0].legend()
-    axs[1].plot(time1,Pt,'-', label="alpha=" + str(alpha))
-    axs[1].set_title('Electricity price')
-    axs[1].legend()
-    axs[2].plot(time1,D[0],'-', label="alpha=" + str(alpha))
-    axs[2].set_title('Demand')
-    axs[2].legend()
-    
-axs[0].grid()
-axs[1].grid()
-axs[2].grid()
-"""
+
+def simulation_alpha(beta=beta, vector=vector_alpha,gamma=gamma):
+    t1=time.time()
+    time1=np.linspace(0,T,n)
+    fig, axs = plt.subplots(1,3)
+    fig.suptitle('Plot with parameters alpha changing, beta='+str(beta)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    for alpha in vector:
+        u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
+        np.random.seed(4)
+        kappa=1/(F+(1/(2*alpha)))
+        result=main(alpha,beta,gamma)
+        Y=result[0]
+        X=result[1]
+        W=result[2]
+        Z=result[3]
+        D=result[5]
+        # qt=np.zeros(n)
+        # for j in range(n-1):
+        #     qt[j]=(X[0,0,j+1]-X[0,0,j])/(T/(n-1))
+        Pt=computePt(X,Y,D,0,alpha,beta,gamma)
+        axs[0].plot(time1,X[0,0],'-', label="alpha=" + str(alpha))
+        axs[0].set_title('Storage level')
+        axs[0].legend()
+        axs[1].plot(time1,Pt,'-', label="alpha=" + str(alpha))
+        axs[1].set_title('Electricity price')
+        axs[1].legend()
+        axs[2].plot(time1,D[0],'-', label="alpha=" + str(alpha))
+        axs[2].set_title('Demand')
+        axs[2].legend() 
+    axs[0].grid()
+    axs[1].grid()
+    axs[2].grid()
+    t2=time.time()
+    print("execution time="+str(t2-t1))
+
 
 
  #6ème exploitation, tracé de l'évolution du prix selon les valeurs de gamma
 
-"""
+
  
   
+def simulation_gamma(alpha=alpha,beta=beta,vector=vector_gamma,n=n): 
+    t1=time.time()
+    time1=np.linspace(0,T,n)
+    kappa=1/(F+(1/(2*alpha)))
+    fig, axs = plt.subplots(1,3)
+    fig.suptitle('Plot with parameters gamma changing, alpha='+str(alpha)+', beta='+str(beta)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    for gamma in vector:
+        np.random.seed(10)
+        u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
+        result=main(alpha,beta,gamma)
+        Y=result[0]
+        X=result[1]
+        W=result[2]
+        Z=result[3]
+        D=result[5]
+        Pt=computePt(X,Y,D,0,alpha,beta,gamma)
+        axs[0].plot(time1,X[0,0],'-', label="gamma=" + str(gamma))
+        axs[0].set_title('Storage level')
+        axs[0].legend()
+        axs[1].plot(time1,Pt,'-', label="gamma=" + str(gamma))
+        axs[1].set_title('Electricity price')
+        axs[1].legend()
+        axs[2].plot(time1,D[0],'-', label="gamma=" + str(gamma))
+        axs[2].set_title('Demand')
+        axs[2].legend()
+    t2=time.time()
+    print("execution time="+str(t2-t1))
   
-  
-beta=20000
-alpha=1000
-kappa=1/(F+(1/(2*alpha)))
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta='+str(beta) + ', Q_0='+str(Q0)+', D0=' + str(D0)+', F(Pt)='+str(F0)+'+' + str(F)+'Pt')
-for gamma in [0,0.1,1,100,500,1000]:
-    np.random.seed(10)
-    u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-    result=main()
-    Y=result[0]
-    X=result[1]
-    W=result[2]
-    Z=result[3]
-    Pt=computePt(X,Y,0)
-    axs[0].plot(time1,X[0,0],'-', label="gamma=" + str(gamma))
-    axs[0].set_title('Storage level')
-    axs[0].legend()
-    axs[1].plot(time1,Pt,'-', label="gamma=" + str(gamma))
-    axs[1].set_title('Electricity price')
-    axs[1].legend()
-    axs[2].plot(time1,X[0,1],'-', label="gamma=" + str(gamma))
-    axs[2].set_title('Demand')
-    axs[2].legend()
-"""  
 def d(t):
     return (theta1*np.sin(2*np.pi*t)/(2*np.pi))+D0
 """
@@ -617,49 +641,41 @@ t2=time.time()
 print("execution time="+str(t2-t1))
 """
 
-##cas deterministe Peter
+##cas deterministe 
 
 
 
-def integrsinhDt(t):
+def integrsinhDt(t,omega,omegat):
     res=(1/(1+(4*(np.pi*np.pi)/(omegat*omegat))))*((-theta1/(2*np.pi*omegat))*np.sin(2*np.pi*t)+(theta1/(omegat**2))*np.sinh(omegat*t))+((D0-F0)*(np.cosh(omegat*t)-1)/omegat)
     return res
 
-def integrsinh(t):
-    res=0 
-    dt=T/(n-1)
-    ttempo=0 
-    while ttempo<t:
-        res+=(np.sinh(omegat*(t-ttempo))+np.sinh(omegat*(t-ttempo-dt)))*dt/2
-        ttempo+=dt
-    return res
 
 
 #     return res
 
-def integrcoshDt(t):
+def integrcoshDt(t,omega,omegat):
     res=(1/(1+(4*(np.pi*np.pi)/(omegat*omegat))))*(theta1/(omegat*omegat))*(-np.cos(2*np.pi*t)+np.cosh(omegat*t))+((D0-F0)*np.sinh(omegat*t)/omegat)
     return res
 
 
 
-def integrcoshsinh(t):
+def integrcoshsinh(t,omega,omegat):
     res=(1/(2*(omega-omegat)))*(np.cosh(omega*t)-np.cosh(omegat*t)) + (1/(2*(omega+omegat)))*(-np.cosh(omega*t)+np.cosh(omegat*t))
     return res
 
 
-def integrcoshcosh(t):
+def integrcoshcosh(t,omega,omegat):
     res=(1/(2*(omega-omegat)))*(np.sinh(omega*t)-np.sinh(omegat*t)) + (1/(2*(omega+omegat)))*(np.sinh(omega*t)+np.sinh(omegat*t))
     return res
-def G(t):
-    res=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(t) + c1*((omega**3)/(omegat*(F+(1/alpha))))*integrcoshsinh(t)
+def G(t,omega,omegat,c1):
+    res=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(t,omega,omegat) + c1*((omega**3)/(omegat*(F+(1/alpha))))*integrcoshsinh(t,omega,omegat)
     return res
 
 
-def computedeterPt(t):
-    return((d(t)-F0-(omega/alpha)*G(t)+c1*(omega**2)*np.cosh(omega*t))/(F+(1/alpha)))
+def computedeterPt(t,omega,omegat,c1):
+    return((d(t)-F0-(omega/alpha)*G(t,omega,omegat,c1)+c1*(omega**2)*np.cosh(omega*t))/(F+(1/alpha)))
 
-def integrG(t,P):
+def integrG(t,P,omega,omegat):
     inte=0 
     i=0 
     s=0
@@ -669,7 +685,7 @@ def integrG(t,P):
         i+=1 
         s+=dt
     return(inte)
-def integrQ(t,P):
+def integrQ(t,P,omega,omegat):
     inte=0 
     i=0 
     s=0
@@ -680,7 +696,7 @@ def integrQ(t,P):
         s+=dt
     return(inte)
 
-def integrq(q):
+def integrq(q,omega,omegat):
     dt=T/(n-1)
     s=0
     Q=np.zeros(n)
@@ -695,114 +711,157 @@ def integrq(q):
 ##determinist with alpha varying
 
 
-
-beta=5/2
-time1=np.linspace(0,T,n)
-
-
-fig, axs = plt.subplots(1,3)
-#fig.suptitle('Plot with parameters alpha changing, beta='+str(beta)+', D0=' + str(D0)+' F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
-
-for alpha in [0.3,2.5,5,10,100]:
-    
+def deterministic_sim(alpha=alpha,beta=beta,gamma=gamma,n=n):
+    t1=time.time()
+    time1=np.linspace(0,T,n)
     omega=np.sqrt(beta/alpha)
     omegat=omega*np.sqrt(F/(F+(1/alpha)))
-    A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T)
-
-
-
-    B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T)
-    Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T)
-
-    Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T)
-
+    A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T,omega,omegat)
+    
+    
+    
+    B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T,omega,omegat)
+    Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T,omega,omegat)
+    
+    Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T,omega,omegat)
+    
     numc1=gamma*Aprime+beta*A
     denomc1=alpha*omega*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)) - gamma*Bprime - beta*B
     c1=numc1/denomc1
-
-    valuesG=[G(t) for t in time1]
-
-    Pricedeter=[computedeterPt(t) for t in time1]
     
-
+    valuesG=[G(t,omega,omegat,c1) for t in time1]
+    
+    Pricedeter=[computedeterPt(t,omega,omegat,c1) for t in time1]
+    
+    
     #Computation of q_t
-    print("B=" + str(B))
-    print("Bprime=" + str(integrcoshcosh(T)))
-    valueq=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(t)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
+    # print("B=" + str(B))
+    # print("Bprime=" + str(integrcoshcosh(T,omega,omegat)))
+    # valueq=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(t,omega,omegat,c1)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
     
     #Computation of Qt :
-    valueQ=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t) + c1*omega*omega*integrcoshcosh(t)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
-
-
+    valueQ=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t,omega,omegat) + c1*omega*omega*integrcoshcosh(t,omega,omegat)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
+    
+    fig, axs = plt.subplots(1,3)
+    fig.suptitle('Plot with alpha='+str(alpha)+', beta='+str(beta)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
     axs[0].plot(time1,Pricedeter,'-', label='alpha=' + str(alpha))
     axs[0].set_title('Price')
-    axs[0].legend()
     axs[1].plot(time1,valueQ,'-', label='alpha=' + str(alpha))
     axs[1].set_title('Q')
-    axs[1].legend()
     axs[2].plot(time1,d(time1),'-', label='alpha=' + str(alpha))
     axs[2].set_title('Energy demand')    
-    axs[2].legend()
-axs[2].grid()
-axs[1].grid()
-axs[0].grid()
+    t2=time.time()
+    print("execution time="+str(t2-t1))
+
+
+def deterministic_sim_alpha(vector=vector_alpha,beta=beta,gamma=gamma,n=n):
+    t1=time.time()
+    fig, axs = plt.subplots(1,3)
+    time1=np.linspace(0,T,n)
+    fig.suptitle('Plot with parameters alpha changing, beta='+str(beta)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    
+    for alpha in vector:
+        
+        omega=np.sqrt(beta/alpha)
+        omegat=omega*np.sqrt(F/(F+(1/alpha)))
+        A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T,omega,omegat)
+    
+    
+    
+        B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T,omega,omegat)
+        Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T,omega,omegat)
+    
+        Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T,omega,omegat)
+    
+        numc1=gamma*Aprime+beta*A
+        denomc1=alpha*omega*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)) - gamma*Bprime - beta*B
+        c1=numc1/denomc1
+    
+        valuesG=[G(t,omega,omegat,c1) for t in time1]
+    
+        Pricedeter=[computedeterPt(t,omega,omegat,c1) for t in time1]
+        
+    
+        #Computation of q_t
+        # print("B=" + str(B))
+        # print("Bprime=" + str(integrcoshcosh(T,omega,omegat)))
+        # valueq=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(t,omega,omegat,c1)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
+        
+        #Computation of Qt :
+        valueQ=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t,omega,omegat) + c1*omega*omega*integrcoshcosh(t,omega,omegat)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
+    
+    
+        axs[0].plot(time1,Pricedeter,'-', label='alpha=' + str(alpha))
+        axs[0].set_title('Price')
+        axs[0].legend()
+        axs[1].plot(time1,valueQ,'-', label='alpha=' + str(alpha))
+        axs[1].set_title('Q')
+        axs[1].legend()
+        axs[2].plot(time1,d(time1),'-', label='alpha=' + str(alpha))
+        axs[2].set_title('Energy demand')    
+        axs[2].legend()
+    axs[2].grid()
+    axs[1].grid()
+    axs[0].grid()
+    t2=time.time()
+    print("execution time="+str(t2-t1))
 
 
 
 
 ##determinist with beta varying
-"""
-time1=np.linspace(0,T,n)
-
-
-alpha=1
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta changing, alpha='+str(alpha)+', D0=' + str(D0)+' F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
-
-for beta in [0.5,1,2.5,5,10]:
+def deterministic_sim_beta(alpha=alpha,vector=vector_beta,gamma=gamma,n=n):
+    t1=time.time()
+    fig, axs = plt.subplots(1,3)
+    fig.suptitle('Plot with parameters beta changing, alpha='+str(alpha)+', F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
+    time1=np.linspace(0,T,n)
+    for beta in vector:
+        
+        omega=np.sqrt(beta/alpha)
+        omegat=omega*np.sqrt(F/(F+(1/alpha)))
+        A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T,omega,omegat)
     
-    omega=np.sqrt(beta/alpha)
-    omegat=omega*np.sqrt(F/(F+(1/alpha)))
-    print(omega)
-    A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T)
-
-
-
-    B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T)
-    Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T)
-
-    Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T)
-
-    numc1=gamma*Aprime+beta*A
-    denomc1=alpha*omega*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)) - gamma*Bprime - beta*B
-    c1=numc1/denomc1
-
-    valuesG=[G(t) for t in time1]
-
-    Pricedeter=[computedeterPt(t) for t in time1]
     
-
-    #Computation of q_t
-
-    valueq=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(t)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
     
-    #Computation of Qt :
-    valueQ=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t) + c1*omega*omega*integrcoshcosh(t)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
+        B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T,omega,omegat)
+        Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T,omega,omegat)
+    
+        Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T,omega,omegat)
+    
+        numc1=gamma*Aprime+beta*A
+        denomc1=alpha*omega*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)) - gamma*Bprime - beta*B
+        c1=numc1/denomc1
+    
+        valuesG=[G(t,omega,omegat,c1) for t in time1]
+    
+        Pricedeter=[computedeterPt(t,omega,omegat,c1) for t in time1]
+        
+    
+        #Computation of q_t
+        # print("B=" + str(B))
+        # print("Bprime=" + str(integrcoshcosh(T,omega,omegat)))
+        # valueq=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(tt,omega,omegat,c1)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
+        
+        #Computation of Qt :
+        valueQ=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t,omega,omegat) + c1*omega*omega*integrcoshcosh(t,omega,omegat)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
+    
+    
+        axs[0].plot(time1,Pricedeter,'-', label='beta=' + str(beta))
+        axs[0].set_title('Price')
+        axs[0].legend()
+        axs[1].plot(time1,valueQ,'-', label='beta=' + str(beta))
+        axs[1].set_title('Q')
+        axs[1].legend()
+        axs[2].plot(time1,d(time1),'-', label='beta=' + str(beta))
+        axs[2].set_title('Energy demand')    
+        axs[2].legend()
+    axs[2].grid()
+    axs[1].grid()
+    axs[0].grid()
+    t2=time.time()
+    print("execution time="+str(t2-t1))
 
 
-    axs[0].plot(time1,Pricedeter,'-', label='beta=' + str(beta))
-    axs[0].set_title('Price')
-    axs[0].legend()
-    axs[1].plot(time1,valueQ,'-', label='beta=' + str(beta))
-    axs[1].set_title('Q')
-    axs[1].legend()
-    axs[2].plot(time1,valueq,'-', label='beta=' + str(beta))
-    axs[2].set_title('q')    
-    axs[2].legend()
-axs[2].grid()
-axs[1].grid()
-axs[0].grid()
-"""
 
 
 
@@ -810,8 +869,6 @@ axs[0].grid()
 
 
 
-t2=time.time()
-print("execution time="+str(t2-t1))
 
 
 ###Utilisation des résultats dans l'exemple pour vérifier l'algo

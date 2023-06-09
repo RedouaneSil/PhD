@@ -55,7 +55,7 @@ def lsu(x,y,f,W,t,R,A):
 
         
 class forward :
-    def __init__(self,n,m,Lambda,dimX,dimY,dimZ,x0,T,D):
+    def __init__(self,n,m,Lambda,dimX,dimY,dimZ,x0,T,D,alpha,beta,gamma):
         self.n=n # time subdivision
         self.m=m # number of iterations
         self.Lambda=Lambda #number of BM
@@ -72,8 +72,12 @@ class forward :
         self.T=T
         self.h=T/(n-1)
         self.dimX=dimX
+        self.alpha=alpha
+        self.gamma=gamma
+        self.beta=beta
+        self.u_g=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
     ###update X    
-    def update(self,W,b,sigma,bprime):
+    def update(self,W,b,sigma):
         t1=time.time()
         self.valueX[:,0,0]=self.x0 #starting point
         #here sigma is constant, hence the next line
@@ -81,9 +85,9 @@ class forward :
         for i in range(self.n-1):
             self.valueX[:,0,i+1]=self.valueX[:,0,i]+b(i,self)*self.h+np.transpose((W[i+1,:,0]-W[i,:,0]))*sigm_global
         t2=time.time()
-        print(t2-t1)
+        #print(t2-t1)
 class backward:
-    def __init__(self,n,m,Lambda,dimX,dimY,dimZ,x0,T):
+    def __init__(self,n,m,Lambda,dimX,dimY,dimZ,x0,T,alpha,beta,gamma):
         self.n=n # time subdivision
         self.m=m # number of iterations
         self.Lambda=Lambda #number of BM
@@ -95,7 +99,10 @@ class backward:
         self.x0=x0
         self.T=T
         self.h=T/(n-1)
-        
+        self.alpha=alpha
+        self.gamma=gamma
+        self.beta=beta
+        self.u_g=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
         
     def update(self,W,f,forward,R):
         t1=time.time()
@@ -141,5 +148,5 @@ class backward:
         self.valueY[:,:,0]=yLam
         forward.u[:,:,0]=yLam
         t2=time.time()
-        print(t2-t1)
+        #print(t2-t1)
         
