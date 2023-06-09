@@ -66,31 +66,6 @@ def conventional(P):
      #return F*(P**2) #quadratic
    return F0+F*P #linear
 
-def conventional_F(x):
-    """if x>P0:
-        return F0+(F/3)*P0+F*(x-P0)
-    else:
-        return F0+(F/3)*x"""
-    return F0+F*x
-
-def pricefunction(y):
-    #print(y)
-    delta=max(((1/(2*alpha))**2)+4*F*y,0)
-    #print(delta)
-    return (-(1/(2*alpha))+np.sqrt(delta))/(2*F)
-    #def to_optimize(x):
-     #   return (x/(2*alpha))+ conventional(x)-y
-    #return inverse(to_optimize)
- 
-def inverse(f):
-    a=-10000
-    b=10000
-    res=scp.root_scalar(f,bracket=[a,b])
-    return res
-
-
-def conventionalDerivative(P):
-    return F
 
 #Auxiliary functions 
 
@@ -104,12 +79,6 @@ def F2(t,T):
     denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
     return num/denom
 
-def F3(t,T):
-    firstnum=np.sqrt(beta/alpha)*(np.exp(-np.sqrt(beta/alpha)*(T-t)))*(1-u)
-    firstdenom=1+(u*np.exp(-2*np.sqrt(beta/alpha)*(T-t)))
-    secondnum=(gamma/alpha)*np.exp(-np.sqrt(beta/alpha)*(T-t))*(1+u)
-    seconddenom=1+(u*np.exp(-2*np.sqrt(beta/alpha)*(T-t)))
-    return (firstnum/firstdenom)-(secondnum/seconddenom)
 
 def fp(t,T):
     num=1-u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
@@ -117,12 +86,6 @@ def fp(t,T):
     return(num/denom)
 
 
-def repeat_along_diag(a, r):
-    m,n = a.shape
-    out = np.zeros((r,m,r,n), dtype=a.dtype)
-    diag = np.einsum('ijik->ijk',out)
-    diag[:] = a
-    return out.reshape(-1,n*r)
 
 ###function b
 def b(i,forward):
@@ -137,12 +100,7 @@ def b(i,forward):
     Qt=valueX_l_at_t[:,0]
     Dt=forward.D[:,i]
     Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
-    #test for a non linear price:
-    #Pt=pricefunction(Dt-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
     image=-(Dt-conventional(Pt))
-    #image[0]=-(Dt-conventional(Pt))
-    #image[1]=-theta*(Dt-mu)
-    #image[:,1]=np.cos(2*np.pi*t)*theta1#- theta*(Dt-mu)
     #exemple from articl
     #image=np.zeros((D,1))
     return image
@@ -160,24 +118,14 @@ def bprime(i,forward,K):
     Qt=valueX_l_at_t[:,0]
     Dt=forward.D[:,i+1]
     Pt=min(kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt+K-Q0)+F1(t,T)*Y1-F2(t,T)*Y2),maxP)
-    #image[0]=-(Dt-conventional(Pt))
-    #image[1]=-theta*(Dt-mu)
-    #image[:,1]=np.cos(2*np.pi*t)*theta1#- theta*(Dt-mu)
     #exemple from articl
-    #image=np.zeros((D,1))
     return image
 
 ##function sigma
 def sigma(i,forward):
     #our fbsde
     #sigm=np.zeros((1,2))
-    #t=i*T/(forward.n-1)
-    #valueX_l_at_t=forward.valueX[l,:,i]
-    #valueZ_l_at_t=forward.v[l,:,i]
-    #sigm[0,1]=rho
-    #sigm[1,2]=sigma_vol
-    #sigma_final=repeat_along_diag(sigm, Lambda)
-    #exemple from article
+    #example from article
     """
     t=i*T/forward.n
     valueY_l_at_t=forward.u[l,:,i]
@@ -216,48 +164,7 @@ def f(i,forward,backward):
     return image
 
 
-# def f(i,forward,backward,l):
-#     valueX_l_at_t=forward.valueX[l,:,i]
-#     t=i*T/(forward.n-1)
-#     valueX_l_at_t=forward.valueX[l,:,i]
-#     valueY_l_at_t=forward.u[l,:,i+1]
-#     Y1=valueY_l_at_t[0]
-#     Y2=valueY_l_at_t[1]
-#     Qt=valueX_l_at_t[0]
-#     Dt=valueX_l_at_t[1]
-#     Pt=kappa*(Dt-F0-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
-#     Price[l,i]=Pt
-#     #test for a non linear price:
-#     #Pt=pricefunction(Dt-np.sqrt(beta/alpha)*fp(t,T)*(Qt-Q0)+F1(t,T)*Y1-F2(t,T)*Y2)
-#     image=np.zeros(dimY)
-#     image[0]=np.exp(-np.sqrt(beta/alpha)*t)*(Pt/(2*alpha))
-#     image[1]=np.exp(np.sqrt(beta/alpha)*t)*(Pt/(2*alpha))
-#     #remise à l'échelle
-#     #image[1]=np.sqrt(beta/alpha)*Y2+(Pt/(2*alpha))
-#     #image[1]=Y2+(Pt/(2*np.sqrt(alpha*beta)))
-#     #image[2]=(Pt/(2*alpha))
-#     #example from article
-#     """
-#     valueX_l_at_t=forward.valueX[l,:,i]
-#     partial_sum=0 
-#     for d in range(D):
-#         partial_sum+=np.sin(valueX_l_at_t[d])
-#     t=i*T/forward.n
-#     image=-r*backward.valueY[l,:,i+1]+0.5*np.exp(-3*r*(T-t))*(sigma_vol**2)*((partial_sum)**3)
-#     """
-#     return image
-
-#generate Brownian motions
-    
-# def brownian(T,n, Lambda,dim):
-#     BMfinal=np.zeros((Lambda,dim,n))
-#     for l in range(Lambda):
-#         for j in range (dim):  
-#             normal=np.random.normal(0,1,n)
-#             for i in range(1,n):
-#                 BMfinal[l,j,i]=BMfinal[l,j,i-1]+np.sqrt(T/(n-1))*normal[i]
-#     return BMfinal
-
+ 
 def brownian(n,T,Lambda,dim):
     dt=T/(n-1)
     dB = np.sqrt(dt) * np.random.randn(n, Lambda,dim)  # Incréments browniens
@@ -306,118 +213,7 @@ def main():
 t1=time.time()
 time1=np.linspace(0,T,n)#[i*T/n for i in range(n)]
 dt=T/(n-1)
-###Utilisation des résultats dans l'exemple
-"""
-Xtheo=np.zeros((D,n))
-for d in range(D):
-    Xtheo[d,0]=np.pi/2
-for i in range(1,n):
-    t=(i-1)*T/n
-    sumX=0
-    for d in range(D):
-        sumX+=np.sin(Xtheo[d,i-1])
-    for d in range(D):
-        dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[0,d,i]-W[0,d,i-1])
-        Xtheo[d,i]=Xtheo[d,i-1]+dx
-#tracé de Ytheo
-Ytheo=np.zeros(n)
-for i in range(n):
-    t=i*T/n
-    sumX=0
-    for d in range(D):
-        sumX+=np.sin(Xtheo[d,i])
-    print(sumX)
-    Ytheo[i]=np.exp(-r*(T-t))*sumX
- 
-    
-#quadratic error
-diffY=np.zeros(n)
-for lam in range(Lambda):
-    Xtheolam=np.zeros((D,n))
-    for d in range(D):
-        Xtheolam[d,0]=np.pi/2
-    for i in range(1,n):
-        t=(i-1)*T/n
-        sumX=0
-        for d in range(D):
-            sumX+=np.sin(Xtheolam[d,i-1])
-        for d in range(D):
-            dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[lam,d,i]-W[lam,d,i-1])
-            Xtheolam[d,i]=Xtheolam[d,i-1]+dx
-    #tracé de Ytheo
-    Ytheolam=np.zeros(n)
-    l=0
-    for i in range(n):
-        t=i*T/n
-        sumX=0
-        for d in range(D):
-            sumX+=np.sin(Xtheolam[d,i])
-        Ytheolam[i]=np.exp(-r*(T-t))*sumX
-    for i in range(n):
-       diffY[i]=diffY[i]+(1/Lambda)*((Ytheolam[i]-Y[lam,0,i])**2)
- 
-    
 
-fig, axs = plt.subplots(2,2)
-fig.suptitle('Plot with parameters D='+str(D)+',sigma='+str(sigma_vol)+',lambda='+str(Lambda) + ',m=' + str(37))
-axs[0,0].plot(time1,Y[0,0],'b-', label="simu")
-axs[0,0].set_title(' Y via schema in blue and Y via decoupling/Euler in green')
-axs[0,0].plot(time1,Ytheo,'-', label="simu")
-#axs[0,1].set_title('Y via decoupling')
-axs[1,0].plot(time1,X[0,0],'b-', label="simu")
-axs[1,0].set_title(' X1[0] schema in blue and via euler in green')
-axs[1,0].plot(time1,Xtheo[0],'-', label="simu")
-#axs[1,1].set_title(' X1 Euler')
-axs[0,1].plot(time1,diffY,'b-', label="simu")
-axs[0,1].set_title(' quadratic error Ydecoupling via Euler-Yschema')
-axs[1,1].plot(time1,abs(Xtheo[0]-X[0,0]),'b-', label="simu")
-axs[1,1].set_title(' X1 Euler[0]-X1schema[0]')
-
-reschema=0
-restheo=0
-for d in range(D):
-    reschema+=np.sin(X[5,d,n-1])
-    restheo+=np.sin(Xtheo[d,n-1])
-"""
-"""
-m_max=24
-Yfinal=np.zeros(m_max)
-absc=[]
-for m in range(m_max):
-    result=main()
-    ###Utilisation des résultats dans l'exemple
-    Y=result[0]
-    X=result[1]
-    W=result[2]
-    Z=result[3]
-    time1=[i*T/n for i in range(n)]
-    Xtheo=np.zeros((D,n))
-    for d in range(D):
-        Xtheo[d,0]=np.pi/2
-    for i in range(1,n):
-        t=i*T/n
-        sumX=0
-        for d in range(D):
-            sumX+=np.sin(Xtheo[d,i-1])
-        for d in range(D):
-            dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[0,d,i]-W[0,d,i-1])
-            Xtheo[d,i]=Xtheo[d,i-1]+dx
-    #tracé de Ytheo
-    Ytheo=np.zeros(n)
-    l=0
-    for i in range(n):
-        t=i*T/n
-        sumX=0
-        for d in range(D):
-            sumX+=np.sin(Xtheo[d,i-1])
-        Ytheo[i]=np.exp(-r*(T-t))*sumX
-    Yfinal[m]=abs(Y[0,0,0]-Ytheo[0])
-    absc.append(m)
-fig, axs = plt.subplots(1,2)
-fig.suptitle('evolution of the error between Y0theo and Y0scheme')
-axs[0].plot(absc,Yfinal,'b-', label="simu")
-
-"""
 
 #######utilisation des résultats
 
@@ -517,54 +313,6 @@ for beta in [1,2,3,5,10]:
     
  
   """  
-    #troisième exploitation de l'algo, tracé de l'évolution du prix selon la taille du stockage
-
-"""
-fig, axs = plt.subplots(1,4)
-fig.suptitle('Plot with parameters alpha='+str(alpha) + ', beta='+str(beta)+', D0=' + str(D0)+' F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
-for Q0 in [50,100,150]:
-    result=main()
-    Y=result[0]
-    X=result[1]
-    W=result[2]
-    Z=result[3]
-    Pt=computePt(X,Y,0)
-    Conv=[conventional(Pt[i]) for i in range(n)]
-    axs[0].plot(time1,X[0,0],'-', label="Q0=" + str(Q0))
-    axs[0].set_title('Storage level')
-    axs[0].legend()
-    axs[1].plot(time1,Pt,'-', label="Q0=" + str(Q0))
-    axs[1].set_title('Electricity price')
-    axs[1].legend()
-    axs[2].plot(time1,X[0,1],'-', label="Q0=" + str(Q0))
-    axs[2].set_title('Demand')
-    axs[2].legend()
-    axs[3].plot(time1,Conv,'-', label="Q0=" + str(Q0))
-    axs[3].set_title('Conventional')
-    axs[3].legend()   
-"""
-#quatrième exploitation, tracé de l'évolution de l'écart entre le prix max et le prix min en fonction de beta
-"""
-#5ème exploitation, tracé de l'évolution du prix selon les valeurs d'alpha
-
-fig, axs = plt.subplots(1,1)
-fig.suptitle('Evolution of the max price-min price compared to beta')
-difference=np.zeros((10))
-store=[]
-i=0
-for j in range(0,10):
-    beta=j*0.5+0.1
-    result=main()
-    Y=result[0]
-    X=result[1]
-    W=result[2]
-    Z=result[3]
-    Pt=computePt(X,Y,0)
-    difference[i]=max([Pt[i] for i in range(int(3*n/T)+1,n)])-min(Pt)
-    store.append(beta)
-    i+=1
-plt.plot(store,difference)
-"""
 
 #tracé de l'évolution selon les valeurs de alpha
 """
@@ -887,13 +635,6 @@ def integrsinh(t):
     return res
 
 
-# def integrcoshDt(t):
-#     res=0 
-#     dt=T/(n-1)
-#     ttempo=0 
-#     while ttempo<t:
-#         res+=((d(ttempo)-F0)*np.cosh(omegat*(t-ttempo)) + (d(ttempo+dt)-F0)*np.cosh(omegat*(t-ttempo-dt)))*dt/2
-#         ttempo+=dt
 #     return res
 
 def integrcoshDt(t):
@@ -906,23 +647,6 @@ def integrcoshsinh(t):
     res=(1/(2*(omega-omegat)))*(np.cosh(omega*t)-np.cosh(omegat*t)) + (1/(2*(omega+omegat)))*(-np.cosh(omega*t)+np.cosh(omegat*t))
     return res
 
-# def integrcoshsinh(t):
-#     res=0 
-#     dt=T/(n-1)
-#     ttempo=0 
-#     while ttempo<t:
-#         res+=(np.cosh(omega*ttempo)*np.sinh(omegat*(t-ttempo))+np.cosh(omega*(ttempo+dt))*np.sinh(omegat*(t-ttempo-dt)))*dt/2
-#         ttempo+=dt
-#     return res
-
-# def integrcoshcosh(t):
-#     res=0 
-#     dt=T/(n-1)
-#     ttempo=0 
-#     while ttempo<t:
-#         res+=(np.cosh(omega*ttempo)*np.cosh(omegat*(t-ttempo))+np.cosh(omega*(ttempo+dt))*np.cosh(omegat*(t-ttempo-dt)))*dt/2
-#         ttempo+=dt
-#     return res
 
 def integrcoshcosh(t):
     res=(1/(2*(omega-omegat)))*(np.sinh(omega*t)-np.sinh(omegat*t)) + (1/(2*(omega+omegat)))*(np.sinh(omega*t)+np.sinh(omegat*t))
@@ -967,79 +691,7 @@ def integrq(q):
         Q[i]=integral
     return Q
         
-"""
-omega=np.sqrt(beta/alpha)
-omegat=omega*np.sqrt(F/(F+(1/alpha)))
-integrsinhTDt=integrsinhDt(T)
 
-A=(omega/(omegat*(F+(1/alpha))))*integrsinhTDt
-
-integrcoshsinhT=integrcoshsinh(T)
-Bnum=(gamma/(alpha*omega))*(omega**3)*integrcoshsinhT
-Bdenom=omegat*(F+(1/alpha))*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T))
-B=Bnum/Bdenom
-
-integrcoshTDt=integrcoshDt(T)
-Aprime=(omega/(F+(1/alpha)))*integrcoshTDt
-
-integrcoshcoshT=integrcoshcosh(T)
-Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcoshT
-
-numc1=(Aprime/(alpha*omega))*(gamma+beta*B*(1/(1-(beta/gamma)*B)))+(beta/(alpha*omega))*A*(1/(1-(beta/gamma)*B))
-denomc1=gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)
-rhsc1=1-(((Bprime/(alpha*omega))*(gamma+beta*B*(1/(1-(beta/gamma)*B))))/denomc1)
-c1=(numc1/denomc1)*(1/rhsc1)
-def G(t):
-    intergsinhDt=integrsinhDt(t)
-    integrcoshsinht=integrcoshsinh(t)
-    res=(omega/(omegat*(F+(1/alpha))))*intergsinhDt + c1*((omega**3)/(omegat*(F+(1/alpha))))*integrcoshsinht
-    return res
-
- 
-values=[G(t) for t in time1]
-
-def computedeterPt(t):
-    return((d(t)-F0-(omega/alpha)*G(t)-c1*(omega**2)*np.cosh(omega*t))/(F+(1/alpha)))
-
-Pricedeter=[computedeterPt(t) for t in time1]
-
-
-def integrG(t,P):
-    inte=0 
-    i=0 
-    s=0
-    dt=T/(n-1)
-    while(s<t):
-        inte+=P[i]*np.sinh(omega*(t-s))*dt
-        i+=1 
-        s+=dt
-    return(inte)
-
-values2=[integrG(t,Pricedeter) for t in time1]
-
-#Computation of q_t
-
-valueq=[(-c1*omega*omega*np.cosh(omega*t) + computedeterPt(t)/alpha + omega*G(t)/alpha) for t in time1]
-
-#Computation of Qt
-fig, axs = plt.subplots(1,4)
-fig.suptitle('Plot with parameters alpha='+str(alpha) + ', beta='+str(beta)+', D0=' + str(D0)+' F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
-axs[0].plot(time1,Pricedeter,'-')
-axs[0].set_title('Price')
-axs[0].grid()
-axs[1].plot(time1,values,'-')
-axs[1].set_title('G0')
-axs[1].grid()
-axs[2].plot(time1,values2,'-')
-axs[2].set_title('G1')
-axs[2].grid()
-axs[3].plot(time1,valueq,'-')
-axs[3].set_title('q')
-axs[3].grid()
-
-
-
-"""
 ##determinist with alpha varying
 
 
@@ -1154,317 +806,123 @@ axs[0].grid()
 
 
 
-"""
 
 
-
-
-
-
-
-n=400
-time1=np.linspace(0,T,n)
-alpha=1.5
-beta=30
-gamma=100000000000
-#tests
-
-omega=np.sqrt(beta/alpha)
-omegat=omega*np.sqrt(F/(F+(1/alpha)))
-
-A=(omega/(omegat*(F+(1/alpha))))*integrsinhDt(T)
-
-
-
-#Bnum=(gamma/(alpha*omega))*(omega**3)*integrcoshsinhT
-#Bdenom=omegat*(F+(1/alpha))*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T))
-#B=Bnum/Bdenom
-B=((omega**3)/(omegat*(F+(1/alpha)))) * integrcoshsinh(T)
-#integrcoshTDt=integrcoshDt(T)
-Aprime=(omega/(F+(1/alpha)))*integrcoshDt(T)
-
-#integrcoshcoshT=integrcoshcosh(T)
-Bprime=((omega**3)/(F+(1/alpha)))*integrcoshcosh(T)
-
-# numc1=(Aprime/(alpha*omega))*(gamma+beta*B*(1/(1-(beta/gamma)*B)))+(beta/(alpha*omega))*A*(1/(1-(beta/gamma)*B))
-# denomc1=gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)
-# rhsc1=1-(((Bprime/(alpha*omega))*(gamma+beta*B*(1/(1-(beta/gamma)*B))))/denomc1)
-# c1=(numc1/denomc1)*(1/rhsc1)
-numc1=gamma*Aprime+beta*A
-denomc1=alpha*omega*(gamma*omega*np.sinh(omega*T)+beta*np.cosh(omega*T)) - gamma*Bprime - beta*B
-c1=numc1/denomc1
-
-
-
-
-
-
-values=[G(t) for t in time1]
-
-
-Pricedeter=[computedeterPt(t) for t in time1]
-
-
-
-values2=[integrG(t,Pricedeter) for t in time1]
-
-#Computation of q_t
-
-valueq=[(-c1*omega*omega*np.cosh(omega*t) + computedeterPt(t)/alpha + omega*G(t)/alpha) for t in time1]
-valueq1=[((d(t)-F0)/(1+alpha*F)) + (alpha*F/(1+alpha*F))*((omega/alpha)*G(t)-c1*omega*omega*np.cosh(omega*t)) for t in time1]
-plt.plot(time1,valueq1)
-#plt.plot(time1,valueq)
-#Computation of Qt :
-valueQ=[Q0+c1*np.sinh(omega*t)*omega-(integrQ(t, Pricedeter)/alpha) for t in time1]
-valueQ1=[Q0-((1/(1+(alpha*F)))*(integrcoshDt(t) + c1*omega*omega*integrcoshcosh(t)-c1*omega*np.sinh(omega*t)-(c1*beta*F*np.sinh(omega*t)/(omega)))) for t in time1]
-print(valueQ1[n-1])
-#tests
-c1limit=Aprime/(alpha*omega*omega*np.sinh(omega*T)-Bprime)
-
-QlimitT=(Aprime/(alpha*omega))+(c1*Bprime/(alpha*omega)) -(c1*omega/(1+alpha*F))*np.sinh(omega*T) - (c1*beta*F/(omega*(1+alpha*F)))*np.sinh(omega*T)
-QlimitT2=(integrcoshDt(T)/(1+alpha*F)) + (1/(1+alpha*F))*c1*omega*omega*(integrcoshcosh(T)-(1/omega)*np.sinh(omega*T)) -(c1*beta*F/(omega*(1+alpha*F)))*np.sinh(omega*T)
-
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters alpha='+str(alpha) + ', beta='+str(beta)+', D0=' + str(D0)+' F(Pt)='+str(F0)+'+'+str(F)+'*Pt')
-axs[0].plot(time1,Pricedeter,'-')
-axs[0].set_title('Price')
-axs[0].grid()
-axs[1].plot(time1,valueQ1,'-')
-axs[1].set_title('Q')
-axs[1].grid()
-axs[2].plot(time1,valueq1,'-')
-axs[2].set_title('q')
-axs[2].grid()
-"""
-"""
-beta=5
-time2=np.linspace(T,0,n)
-gamma=10000
-alpha=1
-n=1000
-u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-kappa=1/(F+(1/(2*alpha)))
-#test new computation
-
-
-
-
-def F1test(t,T):
-    num=np.exp(np.sqrt(beta/alpha)*t)*np.sqrt(beta/alpha)
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return num/denom
-    
-def F2test(t,T):
-    num=u*np.exp(-np.sqrt(beta/alpha)*(2*T-t))*np.sqrt(beta/alpha)
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return num/denom
-
-def fptest(t,T):
-    num=1-u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return(num/denom)
-
-def d(t):
-    return (theta1*np.sin(2*np.pi*t)/(2*np.pi))+D0
-def mysys(z,t):
-    res=[]
-    P=kappa*(d(t)-F0-np.sqrt(beta/alpha)*fptest(t,T)*(z[0]-Q0)+F1test(t,T)*z[1]-F2test(t,T)*z[2])
-    res.append(-d(t)+F0+F*P)
-    res.append(-np.exp(-np.sqrt(beta/alpha)*t)*(1/(2*alpha))*P)
-    res.append(-np.exp(np.sqrt(beta/alpha)*t)*(1/(2*alpha))*P)
-    #print(alpha)
-    return res
-
-def solver_forward_backward(xf):
-    t=np.linspace(T,0,n)
-    yf=[xf,0,0]
-    sol=odeint(mysys, yf, t)
-    x0=sol[n-1,0]
-    return x0
-def systemtooptimize(x):
-    return(solver_forward_backward(x)-Q0)
-
-res=scp.root_scalar(systemtooptimize,bracket=[-10000000,10000000])
-
-time2=np.linspace(T,0,n)
-yf=[res.root,0,0]
-deterministicplot=odeint(mysys, yf, time2)
-Qtheo=deterministicplot[:,0]
-Dtheo=[d(i) for i in time2]
-Y1theo=deterministicplot[:,1]
-Y2theo=deterministicplot[:,2]
-Pricedeter1=[Dtheo[i]*(kappa)-kappa*F0-kappa*np.sqrt(beta/alpha)*fptest(time2[i],T)*(Qtheo[i]-Q0)+kappa*F1test(time2[i],T)*Y1theo[i]-kappa*F2test(time2[i],T)*Y2theo[i] for i in range(n)]
-
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta='+str(beta)+',alpha='+str(alpha) + ', Q_0='+str(Q0)+', D0=' + str(D0)+ ',vol_storage=' + str(rho)+',vol_demand=' + str(sigma_vol))
-axs[0].plot(time2,Qtheo,'-', label="alpha=" + str(alpha))
-axs[0].set_title('Storage level')
-axs[0].grid()
-axs[1].plot(time2,Pricedeter1,'-', label="alpha=" + str(alpha))
-axs[1].set_title('Price')
-axs[1].grid()
-axs[2].plot(time2,Dtheo,'-', label="alpha=" + str(alpha))
-axs[2].set_title('Demand')
-axs[2].grid()
-
-"""
-
-#solution finale déterministe
-"""
-beta=5
-time2=np.linspace(T,0,n)
-gamma=10000
-alpha=1
-n=1000
-u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-kappa=1/(F+(1/(2*alpha)))
-#test new computation with alpha varying
-"""
-
-
-
-def F1test(t,T):
-    num=np.exp(np.sqrt(beta/alpha)*t)*np.sqrt(beta/alpha)
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return num/denom
-    
-def F2test(t,T):
-    num=u*np.exp(-np.sqrt(beta/alpha)*(2*T-t))*np.sqrt(beta/alpha)
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return num/denom
-
-def fptest(t,T):
-    num=1-u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    denom=1+u*np.exp(-2*np.sqrt(beta/alpha)*(T-t))
-    return(num/denom)
-
-def d(t):
-    return (theta1*np.sin(2*np.pi*t)/(2*np.pi))+D0
-def mysys(z,t):
-    res=[]
-    P=kappa*(d(t)-F0-np.sqrt(beta/alpha)*fptest(t,T)*(z[0]-Q0)+F1test(t,T)*z[1]-F2test(t,T)*z[2])
-    res.append(-d(t)+F0+F*P)
-    res.append(-np.exp(-np.sqrt(beta/alpha)*t)*(1/(2*alpha))*P)
-    res.append(-np.exp(np.sqrt(beta/alpha)*t)*(1/(2*alpha))*P)
-    #print(alpha)
-    return res
-
-def solver_forward_backward(xf):
-    t=np.linspace(T,0,n)
-    yf=[xf,0,0]
-    sol=odeint(mysys, yf, t)
-    x0=sol[n-1,0]
-    return x0
-def systemtooptimize(x):
-    return(solver_forward_backward(x)-Q0)
-
-res=scp.root_scalar(systemtooptimize,bracket=[-10000000,10000000])
-
-time2=np.linspace(T,0,n)
-"""
-yf=[res.root,0,0]
-deterministicplot=odeint(mysys, yf, time2)
-Qtheo=deterministicplot[:,0]
-Dtheo=[d(i) for i in time2]
-Y1theo=deterministicplot[:,1]
-Y2theo=deterministicplot[:,2]
-Pricedeter1=[Dtheo[i]*(kappa)-kappa*F0-kappa*np.sqrt(beta/alpha)*fptest(time2[i],T)*(Qtheo[i]-Q0)+kappa*F1test(time2[i],T)*Y1theo[i]-kappa*F2test(time2[i],T)*Y2theo[i] for i in range(n)]
-
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta='+str(beta)+',alpha='+str(alpha) + ', Q_0='+str(Q0)+', D0=' + str(D0)+ ',vol_storage=' + str(rho)+',vol_demand=' + str(sigma_vol))
-axs[0].plot(time2,Qtheo,'-', label="alpha=" + str(alpha))
-axs[0].set_title('Storage level')
-axs[0].grid()
-axs[1].plot(time2,Pricedeter1,'-', label="alpha=" + str(alpha))
-axs[1].set_title('Price')
-axs[1].grid()
-axs[2].plot(time2,Dtheo,'-', label="alpha=" + str(alpha))
-axs[2].set_title('Demand')
-axs[2].grid()
-"""
-
-"""
-beta=5
-fig, axs = plt.subplots(1,3)
-fig.suptitle('Plot with parameters beta='+str(beta)+ ', Q_0='+str(Q0)+', D0=' + str(D0)+ ',vol_storage=' + str(rho)+',vol_demand=' + str(sigma_vol))
-for alpha in [0.4,1,2,5,10,20,200]:
-    u=(np.sqrt(alpha*beta)-gamma)/(np.sqrt(alpha*beta)+gamma)
-    kappa=1/(F+(1/(2*alpha)))
-    res=scp.root_scalar(systemtooptimize,bracket=[-100000,10000])
-    yf=[res.root,0,0]
-    deterministicplot=odeint(mysys, yf, time2)
-    Qtheo=deterministicplot[:,0]
-    Dtheo=[d(i) for i in time2]
-    Y1theo=deterministicplot[:,1]
-    Y2theo=deterministicplot[:,2]
-    Pricedeter1=[Dtheo[i]*(kappa)-kappa*F0-kappa*np.sqrt(beta/alpha)*fptest(time2[i],T)*(Qtheo[i]-Q0)+kappa*F1test(time2[i],T)*Y1theo[i]-kappa*F2test(time2[i],T)*Y2theo[i] for i in range(n)]
-    axs[0].plot(time2,Qtheo,'-', label="alpha=" + str(alpha))
-    axs[0].set_title('Storage level')
-    axs[0].legend()
-    axs[1].plot(time2,Pricedeter1,'-', label="alpha=" + str(alpha))
-    axs[1].set_title('Price')
-    axs[1].legend()
-    axs[2].plot(time2,Dtheo,'-', label="alpha=" + str(alpha))
-    axs[2].set_title('Demand')
-    axs[2].legend()
-    
-axs[0].grid()   
-axs[1].grid()
-axs[2].grid()
-"""
-
-"""
-
-asset=np.zeros(100000)
-    
-def numbe(n,j,i):
-    assettest=np.zeros(100000)
-    assettest[n]=n-j-i
-    return assettest
-
-
-class example:
-    def __init__(self,n,Lambda,time):
-        self.n=n 
-        self.Lambda=Lambda
-        self.v=np.zeros((n,Lambda,time))      
-test=example(10,100000,2)        
-
-def process_line(i):
-    return np.full(test.n,i)
-
-def fill():
-        pool=Pool(4)
-        test.v[:,:,1]=np.transpose(np.vstack(pool.map(process_line,range(test.Lambda))))
-        pool.close()
-        pool.join()
-
-
-
-
-if __name__=="__main__":
-    fill()
-    
-    
-
-def Auxiliary():
-    fill(test)
-    
-def main():
-    c=0
-    pool = Pool()
-    assettest=np.vstack(pool.map(partial(numbe,j=1,i=10), range(100000)))
-    pool.close()
-    pool.join()
-    asset=assettest
-    return 0
-
-    # for result in results:
-    #     # prints the result string in the main process
-    #     print(result)
-    
-"""
 
 
 t2=time.time()
 print("execution time="+str(t2-t1))
+
+
+###Utilisation des résultats dans l'exemple pour vérifier l'algo
+"""
+Xtheo=np.zeros((D,n))
+for d in range(D):
+    Xtheo[d,0]=np.pi/2
+for i in range(1,n):
+    t=(i-1)*T/n
+    sumX=0
+    for d in range(D):
+        sumX+=np.sin(Xtheo[d,i-1])
+    for d in range(D):
+        dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[0,d,i]-W[0,d,i-1])
+        Xtheo[d,i]=Xtheo[d,i-1]+dx
+#tracé de Ytheo
+Ytheo=np.zeros(n)
+for i in range(n):
+    t=i*T/n
+    sumX=0
+    for d in range(D):
+        sumX+=np.sin(Xtheo[d,i])
+    print(sumX)
+    Ytheo[i]=np.exp(-r*(T-t))*sumX
+ 
+    
+#quadratic error
+diffY=np.zeros(n)
+for lam in range(Lambda):
+    Xtheolam=np.zeros((D,n))
+    for d in range(D):
+        Xtheolam[d,0]=np.pi/2
+    for i in range(1,n):
+        t=(i-1)*T/n
+        sumX=0
+        for d in range(D):
+            sumX+=np.sin(Xtheolam[d,i-1])
+        for d in range(D):
+            dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[lam,d,i]-W[lam,d,i-1])
+            Xtheolam[d,i]=Xtheolam[d,i-1]+dx
+    #tracé de Ytheo
+    Ytheolam=np.zeros(n)
+    l=0
+    for i in range(n):
+        t=i*T/n
+        sumX=0
+        for d in range(D):
+            sumX+=np.sin(Xtheolam[d,i])
+        Ytheolam[i]=np.exp(-r*(T-t))*sumX
+    for i in range(n):
+       diffY[i]=diffY[i]+(1/Lambda)*((Ytheolam[i]-Y[lam,0,i])**2)
+ 
+    
+
+fig, axs = plt.subplots(2,2)
+fig.suptitle('Plot with parameters D='+str(D)+',sigma='+str(sigma_vol)+',lambda='+str(Lambda) + ',m=' + str(37))
+axs[0,0].plot(time1,Y[0,0],'b-', label="simu")
+axs[0,0].set_title(' Y via schema in blue and Y via decoupling/Euler in green')
+axs[0,0].plot(time1,Ytheo,'-', label="simu")
+#axs[0,1].set_title('Y via decoupling')
+axs[1,0].plot(time1,X[0,0],'b-', label="simu")
+axs[1,0].set_title(' X1[0] schema in blue and via euler in green')
+axs[1,0].plot(time1,Xtheo[0],'-', label="simu")
+#axs[1,1].set_title(' X1 Euler')
+axs[0,1].plot(time1,diffY,'b-', label="simu")
+axs[0,1].set_title(' quadratic error Ydecoupling via Euler-Yschema')
+axs[1,1].plot(time1,abs(Xtheo[0]-X[0,0]),'b-', label="simu")
+axs[1,1].set_title(' X1 Euler[0]-X1schema[0]')
+
+reschema=0
+restheo=0
+for d in range(D):
+    reschema+=np.sin(X[5,d,n-1])
+    restheo+=np.sin(Xtheo[d,n-1])
+"""
+"""
+m_max=24
+Yfinal=np.zeros(m_max)
+absc=[]
+for m in range(m_max):
+    result=main()
+    ###Utilisation des résultats dans l'exemple
+    Y=result[0]
+    X=result[1]
+    W=result[2]
+    Z=result[3]
+    time1=[i*T/n for i in range(n)]
+    Xtheo=np.zeros((D,n))
+    for d in range(D):
+        Xtheo[d,0]=np.pi/2
+    for i in range(1,n):
+        t=i*T/n
+        sumX=0
+        for d in range(D):
+            sumX+=np.sin(Xtheo[d,i-1])
+        for d in range(D):
+            dx=sigma_vol*np.exp(-r*(T-t))*sumX*(W[0,d,i]-W[0,d,i-1])
+            Xtheo[d,i]=Xtheo[d,i-1]+dx
+    #tracé de Ytheo
+    Ytheo=np.zeros(n)
+    l=0
+    for i in range(n):
+        t=i*T/n
+        sumX=0
+        for d in range(D):
+            sumX+=np.sin(Xtheo[d,i-1])
+        Ytheo[i]=np.exp(-r*(T-t))*sumX
+    Yfinal[m]=abs(Y[0,0,0]-Ytheo[0])
+    absc.append(m)
+fig, axs = plt.subplots(1,2)
+fig.suptitle('evolution of the error between Y0theo and Y0scheme')
+axs[0].plot(absc,Yfinal,'b-', label="simu")
+
+"""
