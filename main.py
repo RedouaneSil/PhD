@@ -335,7 +335,7 @@ def simulation_beta(alpha=alpha,vector=vector_beta,gamma=gamma,n=n):
 
 #tracé de l'évolution selon les valeurs de alpha
 
-def simulation_alpha(beta=beta, vector=vector_alpha,gamma=gamma):
+def simulation_alpha(vector=vector_alpha,beta=beta,gamma=gamma):
     t1=time.time()
     time1=np.linspace(0,T,n)
     fig, axs = plt.subplots(1,3)
@@ -983,3 +983,5 @@ fig.suptitle('evolution of the error between Y0theo and Y0scheme')
 axs[0].plot(absc,Yfinal,'b-', label="simu")
 
 """
+
+
