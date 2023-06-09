@@ -35,3 +35,6 @@ or you directly type deterministic_sim_alpha(vector_alpha,beta,gamma)
 ####Simulation with fixed alpha/gamma and beta changing : 
 either you modify vector_beta which is the vector of beta values that the program will be simulating with, alpha and gamma at the beginning of the code, compile the code and type deterministic_sim_beta()
 or you directly type deterministic_sim_beta(alpha,vector_beta,gamma)
+
+
+Every function will display a graph and the execution time. For the stochastic case, you will be noticed at every iteration of the fixed point algorithm, indicating the current value of the variable that is used to see whether the algorithm has converged or not (it needs to be less than 0.01).
